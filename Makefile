@@ -1,4 +1,4 @@
-NAME=ft_printf
+NAME=ft_ping
 
 CC=gcc
 CFLAGS=-Wall -Wextra -Werror -g -03
