@@ -1,7 +1,7 @@
 NAME=ft_ping
 
 CC=gcc
-CFLAGS=-Wall -Wextra -Werror -g -03
+CFLAGS=-Wall -Wextra -Werror -g -O3
 
 HEADER=include/header.h
 SRC_EXT=c
