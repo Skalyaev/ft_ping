@@ -3,6 +3,7 @@
 extern Ping data;
 
 byte init_addrinfo(){
+
     data.addr.hints.ai_family = AF_INET;
     data.addr.hints.ai_socktype = SOCK_RAW;
     data.addr.hints.ai_protocol = IPPROTO_ICMP;
@@ -18,6 +19,7 @@ byte init_addrinfo(){
 }
 
 byte init_socket(){
+
     data.sock = socket(data.res->ai_family,
                        data.res->ai_socktype,
                        data.res->ai_protocol);

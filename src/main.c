@@ -5,12 +5,13 @@ Ping data = {0};
 static byte bye(){
 
     if(data.res) freeaddrinfo(data.res);
+    if(data.sock <= 0) close(data.sock);
     return data.code;
 }
 
 static void sighdl(const int sig){
 
-    outro();
+    if(sig == SIGINT) outro();
     exit(bye());
 }
 
@@ -70,6 +71,8 @@ int main(int ac, char** av){
 
     setlocale(LC_ALL, "");
     signal(SIGINT, sighdl);
+    signal(SIGQUIT, sighdl);
+    signal(SIGTERM, sighdl);
     getargs(ac, av, &data);
 
     data.code = EXIT_SUCCESS;
