@@ -1,41 +1,50 @@
 #ifndef STRUCT_H
 #define STRUCT_H
 
-typedef struct s_icmp{
-    uint8_t type;
-    uint8_t code;
-    uint16_t checksum;
-    uint16_t id;
-    uint16_t seq;
-}Icmp;
-
-typedef struct s_addrinfo{
-    t_addrinfo hints;
-    t_addrinfo* res;
-}Addrinfo;
-
-typedef struct s_options{
-    size_t ttl;
-    size_t size;
+typedef struct s_opts {
     size_t count;
     size_t interval;
+    size_t ttl;
     size_t timeout;
-    size_t deadline;
-    char* interface;
-    bool numeric;
-    bool horodatage;
     bool flood;
-    bool verbose;
+    size_t preload;
     bool quiet;
-}Options;
+    size_t size;
+    bool verbose;
+} t_opts;
 
-typedef struct s_ping{
+typedef struct s_addr {
+    t_addrinfo hints;
+    t_addrinfo* res;
+} t_addr;
+
+typedef struct s_stats {
+    size_t transmitted;
+    size_t received;
+    t_timeval max_transit;
+    t_timeval min_transit;
+    t_timeval total_transit;
+} t_stats;
+
+typedef struct s_transit {
+    int seq;
+    t_timeval start;
+    struct s_transit* next;
+} t_transit;
+
+typedef struct s_ping {
     char* dst;
-    Options opt;
-    Addrinfo addr;
+    t_opts opt;
+    t_addr addr;
+    t_sockaddr_in addr_in;
     int socket;
-    Icmp header;
+    t_icmphdr hdr;
     int code;
-}Ping;
+    char* buffer;
+    bool exiting;
+    pid_t send_pid;
+    t_stats stats;
+    t_transit* queue;
+} t_ping;
 
 #endif

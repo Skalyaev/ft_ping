@@ -1,35 +1,47 @@
 #ifndef DEFINE_H
 #define DEFINE_H
 
-#define OPT "t:s:c:i:I:w:W:nDfvqh?"
-#define USAGE "\nUsage\n"\
-"  %s [options] <destination>\n\n"\
-"Options\n"\
-"  <destination>   dns name or ip address\n"\
-"  -c <count>      stop after <count> replies\n"\
-"  -D              print timestamp\n"\
-"  -f              flood ping\n"\
-"  -h              print help and exit\n"\
-"  -I <interface>  either interface name or address\n"\
-"  -i <interval>   seconds between sending each packet\n"\
-"  -n              no dns name resolution\n"\
-"  -q              quiet output\n"\
-"  -s <size>       use <size> as number of data bytes to be sent\n"\
-"  -t <ttl>        define time to live\n"\
-"  -v              verbose output\n"\
-"  -w <deadline>   reply wait <deadline> in seconds\n"\
-"  -W <timeout>    time to wait for response\n"
-#define ERR_USAGE "%s: usage error: Adresse de destination requise\n"
+#define OPT "c:i:w:l:s:fqv?"
+
+#define USAGE "Usage: %s [OPTION...] HOST ...\n"\
+"Send ICMP ECHO_REQUEST packets to network hosts.\n"\
+"\n"\
+"  -c, --count=NUMBER         stop after sending NUMBER packets\n"\
+"  -i, --interval=NUMBER      wait NUMBER seconds between sending each packet\n"\
+"      --ttl=N                specify N as time-to-live\n"\
+"  -w, --timeout=N            stop after N seconds\n"\
+"  -f, --flood                flood ping (root only)\n"\
+"  -l, --preload=NUMBER       send NUMBER packets as fast as possible before\n"\
+"                             falling into normal mode of behavior (root only)\n"\
+"  -q, --quiet                quiet output\n"\
+"  -s, --size=NUMBER          send NUMBER data octets\n"\
+"  -v, --verbose              verbose output\n"\
+"  -?, --help                 give this help list\n"\
+"\n"\
+"Mandatory or optional arguments to long options"\
+"are also mandatory or optional for any corresponding short options.\n"
+
+#define ERR_OPERAND "%s: missing host operand\n"\
+"Try 'ping --help' for more information.\n"
+
+#define ERR_ARG "%s: invalid option -- '%s'\n"\
+"Try 'ping --help' for more information.\n"
+
+#define ERR_HOST "%s: unknown host\n"
 
 #define EXIT_SUCCESS 0
 #define EXIT_FAILURE 1
-#define EXIT_USAGE 2
+#define EXIT_USAGE 64
 
 #define YES 1
 #define NO 0
 
-typedef char byte;
 typedef unsigned char bool;
 typedef struct addrinfo t_addrinfo;
+typedef struct sockaddr t_sockaddr;
+typedef struct sockaddr_in t_sockaddr_in;
+typedef struct icmphdr t_icmphdr;
+typedef struct iphdr t_iphdr;
+typedef struct timeval t_timeval;
 
 #endif

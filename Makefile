@@ -3,7 +3,10 @@ NAME=ft_ping
 CC=gcc
 CFLAGS=-Wall -Wextra -Werror -g -O3
 
-HEADER=include/header.h
+INCLUDE_DIR=include
+INCLUDE_EXT=h
+INCLUDE=$(shell find $(INCLUDE_DIR) -type f -name "*.$(INCLUDE_EXT)")
+
 SRC_EXT=c
 SRC_DIR=src
 SRC=$(shell find $(SRC_DIR) -type f -name "*.$(SRC_EXT)")
@@ -20,7 +23,7 @@ $(NAME): $(OBJ_DIR) $(OBJ)
 $(OBJ_DIR):
 	@mkdir -p $(OBJ_DIR)
 
-$(OBJ_DIR)/%.o: $(SRC_DIR)/%.$(SRC_EXT) $(HEADER) | $(OBJ_DIR)
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.$(SRC_EXT) $(INCLUDE) | $(OBJ_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
