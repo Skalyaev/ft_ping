@@ -6,7 +6,7 @@
 
 ## Options supportées
 
-- [ ] `-c --count NUMBER`: Nombre de paquets à envoyer
+- [x] `-c --count NUMBER`: Nombre de paquets à envoyer
 - [ ] `-i --interval NUMBER`: Intervalle entre chaque paquet
 - [ ] `   --ttl NUMBER`: Temps de vie du paquet
 - [ ] `-w --timeout NUMBER`: Temps d'exécution maximal du programme
