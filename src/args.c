@@ -40,7 +40,7 @@ static bool is_question_mark(char** const av, const int idx) {
 void getargs(const int ac, char** const av) {
 
     data.opt.ttl = 64;
-    data.opt.size = 36;
+    data.opt.size = 56;
     data.opt.interval = 1;
 
     const struct option opts[] = {

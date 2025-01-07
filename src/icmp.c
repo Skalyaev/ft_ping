@@ -221,12 +221,12 @@ int8_t recv_icmp() {
     static const int buffer_size = 1024;
 
     char buffer[buffer_size];
-    const ssize_t received = recvfrom(data.socket,
-                                      buffer,
-                                      buffer_size,
-                                      0,
-                                      (t_sockaddr*)&addr,
-                                      &addrlen);
+    ssize_t received = recvfrom(data.socket,
+                                buffer,
+                                buffer_size,
+                                0,
+                                (t_sockaddr*)&addr,
+                                &addrlen);
     if (received < 0) {
         data.code = errno;
         return EXIT_FAILURE;
@@ -241,14 +241,16 @@ int8_t recv_icmp() {
 
     int seq = -1;
 
-    if (icmp_hdr->type == ICMP_ECHOREPLY)
+    if (icmp_hdr->type == ICMP_ECHOREPLY){
         seq = ntohs(icmp_hdr->un.echo.sequence);
-
+    	received -= ip_hdr->ip_hl << 2;
+    }
     else if (icmp_hdr->type == ICMP_TIME_EXCEEDED) {
         const t_ip* oip = (const t_ip*)((const uint8_t*)icmp_hdr + 8);
 
         const t_icmphdr* oicmp = (const t_icmphdr*)((const uint8_t*)oip + (oip->ip_hl << 2));
         seq = ntohs(oicmp->un.echo.sequence);
+    	received -= oip->ip_hl << 2;
     }
     pthread_mutex_lock(&data.queue_mutex);
     t_transit* tmp = data.queue;
