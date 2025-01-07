@@ -7,6 +7,7 @@
 ## Options supportées
 
 - [x] `-c --count NUMBER`: Nombre de paquets à envoyer
+- [x] `-i --interval NUMBER`: Intervalle entre chaque paquet
 - [x] `   --ttl NUMBER`: Temps de vie du paquet
 - [x] `-l --preload NUMBER`: Mode flood pour NUMBER paquets
 - [x] `-f --flood`: Mode flood

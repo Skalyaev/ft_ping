@@ -4,10 +4,6 @@ t_ping data = {0};
 
 static int8_t init() {
 
-    if (!data.opt.ttl) data.opt.ttl = 64;
-    if (!data.opt.size_changed) data.opt.size = 56;
-    if (data.opt.flood) data.opt.quiet = YES;
-
     data.addr.hints.ai_family = AF_INET;
     data.addr.hints.ai_socktype = SOCK_RAW;
     data.addr.hints.ai_protocol = IPPROTO_ICMP;
@@ -16,6 +12,7 @@ static int8_t init() {
                                    &data.addr.hints,
                                    &data.addr.res);
     if(status) {
+        perror("getaddrinfo");
         data.code = status;
         return EXIT_FAILURE;
     }
@@ -23,11 +20,13 @@ static int8_t init() {
                          data.addr.res->ai_socktype,
                          data.addr.res->ai_protocol);
     if(data.socket == -1) {
+        perror("socket");
         data.code = errno;
         return EXIT_FAILURE;
     }
     if(setsockopt(data.socket, IPPROTO_IP, IP_TTL,
                   &data.opt.ttl, sizeof(data.opt.ttl)) == -1) {
+        perror("setsockopt");
         data.code = errno;
         return EXIT_FAILURE;
     }
@@ -135,10 +134,7 @@ static int8_t ping(const size_t* const interval,  const size_t* const idx) {
     if(send_icmp(&seq) != EXIT_SUCCESS) return EXIT_FAILURE;
     if(idx && *idx == data.opt.count - 1) return EXIT_SUCCESS;
 
-    if(data.opt.preload) {
-        data.opt.preload--;
-        usleep(MIN_SLEEP);
-    }
+    if(data.opt.preload) data.opt.preload--;
     else usleep(*interval);
     return EXIT_SUCCESS;
 }
@@ -148,7 +144,7 @@ static void* sender() {
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
 
-    const size_t interval = data.opt.flood ? MIN_SLEEP : 1000000;
+    const size_t interval = data.opt.flood ? 10000 : data.opt.interval * 1000000;
 
     if(data.opt.count) {
         for(size_t x = 0; x < data.opt.count; x++)
@@ -163,9 +159,12 @@ static void* receiver() {
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
 
+    size_t total = 0;
     while(1) {
         if(recv_icmp() != EXIT_SUCCESS) break;
-        if(data.stats.received == data.opt.count) break;
+
+        total = data.stats.received + data.stats.failed;
+        if(total == data.opt.count) break;
         if(data.code != EXIT_SUCCESS) break;
     }
     return NULL;

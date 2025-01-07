@@ -5,10 +5,10 @@ typedef struct s_opts {
     size_t count;
     size_t ttl;
     size_t preload;
+    double interval;
     bool flood;
     bool quiet;
     size_t size;
-    bool size_changed;
     bool verbose;
 } t_opts;
 
@@ -20,6 +20,7 @@ typedef struct s_addr {
 typedef struct s_stats {
     size_t transmitted;
     size_t received;
+    size_t failed;
     double max_transit;
     double min_transit;
     double total_transit;
