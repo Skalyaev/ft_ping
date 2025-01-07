@@ -2,6 +2,7 @@ NAME=ft_ping
 
 CC=gcc
 CFLAGS=-Wall -Wextra -Werror -g -O3
+LDFLAGS=-lm
 
 INCLUDE_DIR=include
 INCLUDE_EXT=h
@@ -17,7 +18,7 @@ OBJ=$(patsubst $(SRC_DIR)/%.$(SRC_EXT),$(OBJ_DIR)/%.o,$(SRC))
 all: $(NAME)
 
 $(NAME): $(OBJ_DIR) $(OBJ)
-	$(CC) $(CFLAGS) $(OBJ) -o $@
+	$(CC) $(CFLAGS) $(OBJ) -o $@ $(LDFLAGS)
 	@echo $(NAME) created
 
 $(OBJ_DIR):

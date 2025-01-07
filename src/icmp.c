@@ -34,7 +34,7 @@ int8_t send_icmp(const int* const seq) {
 
     memset(&data.hdr, 0, hdr_size);
 
-    data.hdr.un.echo.id = htons(data.send_pid);
+    data.hdr.un.echo.id = htons(data.pid);
     data.hdr.un.echo.sequence = htons(*seq);
 
     data.hdr.type = ICMP_ECHO;
@@ -49,6 +49,20 @@ int8_t send_icmp(const int* const seq) {
     memcpy(data.buffer, &data.hdr, hdr_size);
     memset(data.buffer + hdr_size, 0, data.opt.size);
 
+    pthread_mutex_lock(&data.queue_mutex);
+
+    t_transit** ptr = &data.queue;
+    while(*ptr) ptr = &(*ptr)->next;
+
+    *ptr = malloc(sizeof(t_transit));
+    if(!*ptr) {
+        pthread_mutex_unlock(&data.queue_mutex);
+        data.code = errno;
+        return EXIT_FAILURE;
+    }
+    (*ptr)->seq = *seq;
+    (*ptr)->next = NULL;
+
     const ssize_t sent = sendto(data.socket,
                                 data.buffer,
                                 buffer_size,
@@ -60,35 +74,104 @@ int8_t send_icmp(const int* const seq) {
     data.buffer = NULL;
     free(tmp);
 
-    t_timeval start;
-    if (gettimeofday(&start, NULL) < 0) {
+    if(sent < 0) {
         data.code = errno;
-        return EXIT_FAILURE
+        pthread_mutex_unlock(&data.queue_mutex);
+        return EXIT_FAILURE;
     }
-    t_transit** ptr = &data.queue;
+    data.stats.transmitted++;
+
+    if (gettimeofday(&(*ptr)->start, NULL) < 0) {
+        data.code = errno;
+        pthread_mutex_unlock(&data.queue_mutex);
+        return EXIT_FAILURE;
+    }
+    pthread_mutex_unlock(&data.queue_mutex);
+    return EXIT_SUCCESS;
+}
+
+static int8_t new_pending_seq(const int* const seq, const t_timeval* const end) {
+
+    t_pending_seq** ptr = &data.pending_seq;
     while(*ptr) ptr = &(*ptr)->next;
 
-    *ptr = malloc(sizeof(t_transit));
+    *ptr = malloc(sizeof(t_pending_seq));
     if(!*ptr) {
         data.code = errno;
         return EXIT_FAILURE;
     }
     (*ptr)->seq = *seq;
-    (*ptr)->start = start;
+    (*ptr)->end = *end;
     (*ptr)->next = NULL;
-
-    if(sent < 0) {
-        data.code = errno;
-        return EXIT_FAILURE;
-    }
-    data.stats.transmitted++;
     return EXIT_SUCCESS;
+}
+
+static void check_pending_seq() {
+
+    pthread_mutex_lock(&data.queue_mutex);
+    t_pending_seq* tmp = data.pending_seq;
+
+    t_transit* ptr;
+    t_transit* prev;
+    if(!tmp) {
+        pthread_mutex_unlock(&data.queue_mutex);
+        return;
+    }
+    while(tmp && data.queue) {
+        ptr = data.queue;
+        prev = ptr;
+
+        while(ptr && ptr->seq != tmp->seq) {
+            prev = ptr;
+            ptr = ptr->next;
+        }
+        if(!ptr) {
+            tmp = tmp->next;
+            continue;
+        }
+        const t_timeval transit = {
+            .tv_sec = tmp->end.tv_sec - ptr->start.tv_sec,
+            .tv_usec = tmp->end.tv_usec - ptr->start.tv_usec
+        };
+        if (prev != ptr) {
+            prev->next = ptr->next;
+            free(ptr);
+        } else {
+            free(ptr);
+            data.queue = NULL;
+        }
+        pthread_mutex_unlock(&data.queue_mutex);
+        const double time = (double)transit.tv_sec * 1000 + (double)transit.tv_usec / 1000;
+
+        if (!data.stats.received) {
+            data.stats.min_transit = time;
+            data.stats.max_transit = time;
+        } else {
+            if (data.stats.min_transit > time) data.stats.min_transit = time;
+            if (data.stats.max_transit < time) data.stats.max_transit = time;
+        }
+        data.stats.total_transit += time;
+        data.stats.square_sum += time * time;
+        data.stats.received++;
+
+        if (!data.opt.quiet)
+            printf("From %s: icmp_seq=%d ttl=%d time=%.3f ms\n",
+                   inet_ntoa(data.addr_in.sin_addr), tmp->seq, data.hdr.un.echo.id, time);
+
+        t_pending_seq* old = tmp;
+        tmp = tmp->next;
+        free(old);
+    }
+    pthread_mutex_unlock(&data.queue_mutex);
 }
 
 int8_t recv_icmp() {
 
+    check_pending_seq();
+
     t_sockaddr_in addr;
     static socklen_t addrlen = sizeof(addr);
+
     static const uint8_t buffer_size = 64;
     static const size_t hdr_size = sizeof(data.hdr);
 
@@ -111,53 +194,65 @@ int8_t recv_icmp() {
     const t_iphdr* const ip_hdr = (t_iphdr*)buffer;
     const t_icmphdr* const icmp_hdr = (t_icmphdr*)(buffer + (ip_hdr->ihl << 2));
 
-    const int seq = ntohs(icmp_hdr->un.echo.sequence);
+    int seq = -1;
     const char* const dst = inet_ntoa(addr.sin_addr);
 
-    t_transit* tmp = data.queue;
-    t_transit* prev = tmp;
+    if (icmp_hdr->type == ICMP_ECHOREPLY) seq = ntohs(icmp_hdr->un.echo.sequence);
+    else if (icmp_hdr->type == ICMP_TIME_EXCEEDED) {
 
-    while(tmp && tmp->seq != seq) {
+        const t_iphdr* const original_ip_hdr = (t_iphdr*)(icmp_hdr + 1);
+        const t_icmphdr* const original_icmp_hdr = (t_icmphdr*)((char*)original_ip_hdr
+            + (original_ip_hdr->ihl << 2));
+
+        seq = ntohs(original_icmp_hdr->un.echo.sequence);
+    }
+    pthread_mutex_lock(&data.queue_mutex);
+    t_transit* tmp = data.queue;
+    t_transit* prev = NULL;
+
+    while (tmp && tmp->seq != seq) {
         prev = tmp;
         tmp = tmp->next;
     }
-    if(!tmp) {
-        if(!data.opt.quiet)
-            printf("%ld bytes from %s: Sequence error\n", received, dst);
+    if (!tmp) {
+        pthread_mutex_unlock(&data.queue_mutex);
+        if(new_pending_seq(&seq, &end) != EXIT_SUCCESS) return EXIT_FAILURE;
         return EXIT_SUCCESS;
     }
     const t_timeval transit = {
         .tv_sec = end.tv_sec - tmp->start.tv_sec,
         .tv_usec = end.tv_usec - tmp->start.tv_usec
     };
-    if(data.stats.max_transit.tv_usec < transit.tv_usec) {
-        data.stats.max_transit = transit;
-    }
-    if(data.stats.min_transit.tv_usec > transit.tv_usec) {
-        data.stats.min_transit = transit;
-    }
-    data.stats.total_transit.tv_sec += transit.tv_sec;
-    data.stats.total_transit.tv_usec += transit.tv_usec;
-
-    if(prev != tmp) {
+    if(!prev) {
+        if(!tmp->next) data.queue = NULL;
+        else data.queue = tmp->next;
+        free(tmp);
+    } else {
         prev->next = tmp->next;
         free(tmp);
     }
-    else {
-        free(tmp);
-        data.queue = NULL;
+    pthread_mutex_unlock(&data.queue_mutex);
+    const double time = (double)transit.tv_sec * 1000 + (double)transit.tv_usec / 1000;
+
+    if(!data.stats.received) {
+        data.stats.min_transit = time;
+        data.stats.max_transit = time;
+    } else {
+        if(data.stats.min_transit > time) data.stats.min_transit = time;
+        if(data.stats.max_transit < time) data.stats.max_transit = time;
     }
+    data.stats.total_transit += time;
+    data.stats.square_sum += time * time;
+    data.stats.received++;
+
     if (!checksum_check((uint16_t*)icmp_hdr, hdr_size)) {
         if (!data.opt.quiet)
             printf("%ld bytes from %s: Checksum error\n", received, dst);
-    }
-    else if (icmp_hdr->type == ICMP_ECHOREPLY) {
+    } else if (icmp_hdr->type == ICMP_ECHOREPLY) {
         if (!data.opt.quiet)
-            printf("%ld bytes from %s: icmp_seq=%d ttl=%d time=%d ms\n",
-                   received, dst, seq, ip_hdr->ttl, 0);
-        data.stats.received++;
-    }
-    else if (icmp_hdr->type == ICMP_TIME_EXCEEDED) {
+            printf("%ld bytes from %s: icmp_seq=%d ttl=%d time=%.3f ms\n",
+                   received, dst, seq, ip_hdr->ttl, time);
+    } else if (icmp_hdr->type == ICMP_TIME_EXCEEDED) {
         if (!data.opt.quiet)
             printf("%ld bytes from %s: Time to live exceeded\n", received, dst);
     }

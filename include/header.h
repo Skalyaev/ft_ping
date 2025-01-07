@@ -10,6 +10,7 @@
 #include <errno.h>
 #include <netdb.h>
 #include <getopt.h>
+#include <math.h>
 #include <pthread.h>
 #include <sys/types.h>
 #include <sys/socket.h>

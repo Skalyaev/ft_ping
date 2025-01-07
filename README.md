@@ -7,15 +7,13 @@
 ## Options supportées
 
 - [x] `-c --count NUMBER`: Nombre de paquets à envoyer
-- [ ] `-i --interval NUMBER`: Intervalle entre chaque paquet
-- [ ] `   --ttl NUMBER`: Temps de vie du paquet
-- [ ] `-w --timeout NUMBER`: Temps d'exécution maximal du programme
-- [ ] `-f --flood`: Mode flood
-- [ ] `-l --preload NUMBER`: Mode flood pour NUMBER paquets
-- [ ] `-s --size NUMBER`: Taille du paquet
-- [ ] `-q --quiet`: Mode silencieux
-- [ ] `-v --verbose`: Mode verbeux
-- [ ] `-? --help`: Affiche l'aide
+- [x] `   --ttl NUMBER`: Temps de vie du paquet
+- [x] `-l --preload NUMBER`: Mode flood pour NUMBER paquets
+- [x] `-f --flood`: Mode flood
+- [x] `-s --size NUMBER`: Taille du paquet
+- [x] `-q --quiet`: Mode silencieux
+- [x] `-v --verbose`: Mode verbeux
+- [x] `-? --help`: Affiche l'aide
 
 ## Install
 

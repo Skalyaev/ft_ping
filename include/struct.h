@@ -3,13 +3,12 @@
 
 typedef struct s_opts {
     size_t count;
-    size_t interval;
     size_t ttl;
-    size_t timeout;
-    bool flood;
     size_t preload;
+    bool flood;
     bool quiet;
     size_t size;
+    bool size_changed;
     bool verbose;
 } t_opts;
 
@@ -21,9 +20,10 @@ typedef struct s_addr {
 typedef struct s_stats {
     size_t transmitted;
     size_t received;
-    t_timeval max_transit;
-    t_timeval min_transit;
-    t_timeval total_transit;
+    double max_transit;
+    double min_transit;
+    double total_transit;
+    double square_sum;
 } t_stats;
 
 typedef struct s_transit {
@@ -32,7 +32,14 @@ typedef struct s_transit {
     struct s_transit* next;
 } t_transit;
 
+typedef struct s_pending_seq {
+    int seq;
+    t_timeval end;
+    struct s_pending_seq* next;
+} t_pending_seq;
+
 typedef struct s_ping {
+    pid_t pid;
     char* dst;
     t_opts opt;
     t_addr addr;
@@ -41,10 +48,12 @@ typedef struct s_ping {
     t_icmphdr hdr;
     int code;
     char* buffer;
-    bool exiting;
-    pid_t send_pid;
     t_stats stats;
     t_transit* queue;
+    pthread_mutex_t queue_mutex;
+    pthread_t sender;
+    pthread_t receiver;
+    t_pending_seq* pending_seq;
 } t_ping;
 
 #endif
