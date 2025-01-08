@@ -30,7 +30,7 @@ apt install -y gcc
 
 ```bash
 cd ~/.local/src
-git clone https://github.com/Skalyaeve/ft_ping.git
+git clone https://github.com/Skalyaev/ft_ping.git
 cd ft_ping && make
 ln -s $PWD/ft_ping ~/.local/bin/ft_ping
 export PATH=~/.local/bin:$PATH
