@@ -22,7 +22,7 @@
 mkdir -p ~/.local/src
 mkdir -p ~/.local/bin
 
-apt update -y
+apt update
 apt install -y git
 apt install -y make
 apt install -y gcc
